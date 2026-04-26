@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador — Coeficiente de Rozamiento Dinámico</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0f13;
+    --surface: #16181f;
+    --surface2: #1e2029;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8eaf0;
+    --muted: #7a7e93;
+    --accent: #5b8df6;
+    --accent2: #3ecf8e;
+    --warn: #f87171;
+    --amber: #fbbf24;
+    --font: 'Space Grotesk', sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  .page {
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 2.5rem;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    background: rgba(91,141,246,0.12);
+    border: 1px solid rgba(91,141,246,0.25);
+    border-radius: 4px;
+    padding: 3px 10px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(1.6rem, 4vw, 2.2rem);
+    font-weight: 600;
+    line-height: 1.15;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0;
+  }
+
+  .tab {
+    padding: 8px 18px;
+    font-size: 13px;
+    font-family: var(--font);
+    font-weight: 500;
+    color: var(--muted);
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    margin-bottom: -1px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .grid2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 1.25rem;
+  }
+
+  @media (max-width: 520px) { .grid2 { grid-template-columns: 1fr; } }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.03em;
+  }
+
+  .field input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border2);
+    outline: none;
+    margin-bottom: 4px;
+  }
+
+  .field input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+
+  .field input[type="number"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 8px 12px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field input[type="number"]:focus { border-color: var(--accent); }
+
+  .slider-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .slider-val {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    gap: 10px;
+    margin-top: 1rem;
+  }
+
+  .metric {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+
+  .metric-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .metric-val {
+    font-size: 1.3rem;
+    font-weight: 600;
+    font-family: var(--mono);
+    color: #fff;
+  }
+
+  .metric-unit {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 3px;
+  }
+
+  canvas {
+    width: 100%;
+    display: block;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin: 1rem 0;
+  }
+
+  .formula-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  @media (max-width: 520px) { .formula-grid { grid-template-columns: 1fr; } }
+
+  .formula-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .formula-row:last-child { border-bottom: none; }
+  .formula-lbl { color: var(--muted); font-family: var(--mono); font-size: 12px; }
+  .formula-res { color: var(--text); font-family: var(--mono); font-weight: 500; }
+
+  .check-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .check-row:last-child { border-bottom: none; }
+  .check-lbl { color: var(--muted); font-size: 12px; }
+  .check-right { display: flex; gap: 10px; align-items: center; }
+  .check-lab { font-family: var(--mono); color: var(--text); }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-family: var(--mono);
+    border-radius: 5px;
+    padding: 2px 8px;
+  }
+
+  .badge-ok { background: rgba(62,207,142,0.15); color: var(--accent2); border: 1px solid rgba(62,207,142,0.3); }
+  .badge-err { background: rgba(248,113,113,0.15); color: var(--warn); border: 1px solid rgba(248,113,113,0.3); }
+
+  .info-box {
+    background: rgba(91,141,246,0.08);
+    border: 1px solid rgba(91,141,246,0.2);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    line-height: 1.6;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 3rem;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    line-height: 1.8;
+  }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <div class="tag">ESPOCH · Física Mecánica · PAO 1-1 · 2025-2026</div>
+    <h1>Simulador de Rozamiento Dinámico</h1>
+    <p class="subtitle">Práctica 2 — Cálculo del coeficiente de rozamiento · Tito Freire</p>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('sim')">Simulador</button>
+    <button class="tab" onclick="showTab('calc')">Calculadora</button>
+    <button class="tab" onclick="showTab('check')">Comprobación</button>
+    <button class="tab" onclick="showTab('teoria')">Teoría</button>
+  </div>
+
+  <!-- SIMULADOR -->
+  <div class="panel active" id="panel-sim">
+    <div class="card">
+      <div class="grid2">
+        <div class="field">
+          <label>MASA — m (kg)</label>
+          <input type="range" min="0.5" max="10" step="0.01" value="2.72" id="s-masa" oninput="simUpdate()">
+          <div class="slider-row"><span>0.5</span><span class="slider-val" id="sv-masa">2.72 kg</span><span>10</span></div>
+        </div>
+        <div class="field">
+          <label>F₁ VELOCIDAD CONSTANTE (N)</label>
+          <input type="range" min="1" max="50" step="0.01" value="17.738" id="s-f1" oninput="simUpdate()">
+          <div class="slider-row"><span>1</span><span class="slider-val" id="sv-f1">17.74 N</span><span>50</span></div>
+        </div>
+        <div class="field">
+          <label>F₂ CON ACELERACIÓN (N)</label>
+          <input type="range" min="1" max="60" step="0.01" value="22.24" id="s-f2" oninput="simUpdate()">
+          <div class="slider-row"><span>1</span><span class="slider-val" id="sv-f2">22.24 N</span><span>60</span></div>
+        </div>
+        <div class="field">
+          <label>TIEMPO — t (s)</label>
+          <input type="range" min="0.5" max="10" step="0.5" value="2" id="s-t" oninput="simUpdate()">
+          <div class="slider-row"><span>0.5</span><span class="slider-val" id="sv-t">2 s</span><span>10</span></div>
+        </div>
+      </div>
+
+      <canvas id="physics-canvas" height="170"></canvas>
+      <div class="legend">
+        <span><span class="dot" style="background:#5b8df6"></span>F₁ aplicada</span>
+        <span><span class="dot" style="background:#f87171"></span>F rozamiento</span>
+        <span><span class="dot" style="background:#3ecf8e"></span>Normal (N)</span>
+        <span><span class="dot" style="background:#fbbf24"></span>Peso (P)</span>
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><span class="metric-label">Normal</span><span class="metric-val" id="sm-N">26.656</span><span class="metric-unit">N</span></div>
+      <div class="metric"><span class="metric-label">μ rozamiento</span><span class="metric-val" id="sm-mu">0.665</span></div>
+      <div class="metric"><span class="metric-label">F rozamiento</span><span class="metric-val" id="sm-Fr">17.86</span><span class="metric-unit">N</span></div>
+      <div class="metric"><span class="metric-label">Aceleración</span><span class="metric-val" id="sm-a">1.61</span><span class="metric-unit">m/s²</span></div>
+      <div class="metric"><span class="metric-label">Vel. final</span><span class="metric-val" id="sm-vf">3.22</span><span class="metric-unit">m/s</span></div>
+      <div class="metric"><span class="metric-label">Distancia</span><span class="metric-val" id="sm-d">3.22</span><span class="metric-unit">m</span></div>
+    </div>
+  </div>
+
+  <!-- CALCULADORA -->
+  <div class="panel" id="panel-calc">
+    <div class="card">
+      <div class="grid2">
+        <div class="field"><label>MASA (kg)</label><input type="number" step="0.01" value="2.72" id="c-masa" oninput="calcUpdate()"></div>
+        <div class="field"><label>F₁ — VELOC. CONSTANTE (N)</label><input type="number" step="0.01" value="17.738" id="c-f1" oninput="calcUpdate()"></div>
+        <div class="field"><label>F₂ — CON ACELERACIÓN (N)</label><input type="number" step="0.01" value="22.24" id="c-f2" oninput="calcUpdate()"></div>
+        <div class="field"><label>TIEMPO (s)</label><input type="number" step="0.5" value="2" id="c-t" oninput="calcUpdate()"></div>
+      </div>
+      <div class="formula-row"><span class="formula-lbl">N = m · g</span><span class="formula-res" id="cr-N">—</span></div>
+      <div class="formula-row"><span class="formula-lbl">μ = F₁ / (m·g)</span><span class="formula-res" id="cr-mu">—</span></div>
+      <div class="formula-row"><span class="formula-lbl">Fr = μ · m · g</span><span class="formula-res" id="cr-Fr">—</span></div>
+      <div class="formula-row"><span class="formula-lbl">a = (F₂ − Fr) / m</span><span class="formula-res" id="cr-a">—</span></div>
+      <div class="formula-row"><span class="formula-lbl">vf = a · t</span><span class="formula-res" id="cr-vf">—</span></div>
+      <div class="formula-row"><span class="formula-lbl">d = ½ · a · t²</span><span class="formula-res" id="cr-d">—</span></div>
+    </div>
+  </div>
+
+  <!-- COMPROBACIÓN -->
+  <div class="panel" id="panel-check">
+    <div class="card">
+      <div class="check-row"><span class="check-lbl">Masa (kg)</span><div class="check-right"><span class="check-lab">2.72 kg</span><span class="badge badge-ok" id="chk-m">✓ correcto</span></div></div>
+      <div class="check-row"><span class="check-lbl">Normal N (N)</span><div class="check-right"><span class="check-lab">26.656 N</span><span class="badge" id="chk-N">—</span></div></div>
+      <div class="check-row"><span class="check-lbl">Coeficiente μ</span><div class="check-right"><span class="check-lab">0.67</span><span class="badge" id="chk-mu">—</span></div></div>
+      <div class="check-row"><span class="check-lbl">F rozamiento (N)</span><div class="check-right"><span class="check-lab">17.86 N</span><span class="badge" id="chk-Fr">—</span></div></div>
+      <div class="check-row"><span class="check-lbl">Aceleración (m/s²)</span><div class="check-right"><span class="check-lab">1.61 m/s²</span><span class="badge" id="chk-a">—</span></div></div>
+      <div class="check-row"><span class="check-lbl">Velocidad final (m/s)</span><div class="check-right"><span class="check-lab">3.22 m/s</span><span class="badge" id="chk-vf">—</span></div></div>
+      <div class="check-row"><span class="check-lbl">Distancia (m)</span><div class="check-right"><span class="check-lab">3.22 m</span><span class="badge" id="chk-d">—</span></div></div>
+    </div>
+    <div class="info-box">Valores del laboratorio: masa 2.72 kg · F₁ = 17.738 N · F₂ = 22.24 N · t = 2 s · g = 9.8 m/s²<br>Tolerancia de comparación: ±0.05 unidades.</div>
+  </div>
+
+  <!-- TEORÍA -->
+  <div class="panel" id="panel-teoria">
+    <div class="card">
+      <div style="font-size:13px; line-height:1.8; color:#b0b3c6;">
+        <p style="margin-bottom:1rem;">El <strong style="color:#fff">coeficiente de rozamiento dinámico μ</strong> es la razón entre la fuerza de rozamiento y la fuerza normal que actúa sobre un cuerpo en movimiento.</p>
+        <div style="background:var(--surface2); border-radius:8px; padding:14px; margin:1rem 0; font-family:var(--mono); font-size:14px; color:#e8eaf0; line-height:2.2;">
+          Fr = μ · N<br>
+          N = m · g<br>
+          μ = F₁ / (m · g)<br>
+          a = (F₂ − Fr) / m<br>
+          vf = v₀ + a·t<br>
+          d = v₀·t + ½·a·t²
+        </div>
+        <p style="margin-bottom:0.8rem;"><strong style="color:#fff">Condición de velocidad constante:</strong> Cuando el objeto se desplaza a velocidad constante, la aceleración es 0, por lo tanto la fuerza aplicada es igual a la fuerza de rozamiento: F₁ = Fr.</p>
+        <p><strong style="color:#fff">Segunda fase (con aceleración):</strong> Al aumentar la fuerza a F₂, la resultante horizontal produce una aceleración constante a = (F₂ − Fr) / m, permitiendo calcular la velocidad final y distancia recorrida mediante MRUV.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Simulador generado para verificación del Laboratorio 1 · Física Mecánica<br>
+    ESPOCH · Facultad de Informática y Electrónica · Telecomunicaciones · 2025–2026<br>
+    <span style="color:#5b8df6">g = 9.8 m/s²</span>
+  </footer>
+
+</div>
+
+<script>
+const G = 9.8;
+
+function calc(m, f1, f2, t) {
+  const N = m * G;
+  const mu = f1 / N;
+  const Fr = mu * N;
+  const a = (f2 - Fr) / m;
+  const vf = a * t;
+  const d = 0.5 * a * t * t;
+  return { N, mu, Fr, a, vf, d };
+}
+
+function showTab(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.tab')[['sim','calc','check','teoria'].indexOf(name)].classList.add('active');
+  if (name === 'check') runCheck();
+}
+
+function simUpdate() {
+  const m = +document.getElementById('s-masa').value;
+  const f1 = +document.getElementById('s-f1').value;
+  const f2 = +document.getElementById('s-f2').value;
+  const t = +document.getElementById('s-t').value;
+  document.getElementById('sv-masa').textContent = m.toFixed(2) + ' kg';
+  document.getElementById('sv-f1').textContent = f1.toFixed(2) + ' N';
+  document.getElementById('sv-f2').textContent = f2.toFixed(2) + ' N';
+  document.getElementById('sv-t').textContent = t.toFixed(1) + ' s';
+  const r = calc(m, f1, f2, t);
+  document.getElementById('sm-N').textContent = r.N.toFixed(3);
+  document.getElementById('sm-mu').textContent = r.mu.toFixed(3);
+  document.getElementById('sm-Fr').textContent = r.Fr.toFixed(3);
+  document.getElementById('sm-a').textContent = r.a.toFixed(3);
+  document.getElementById('sm-vf').textContent = r.vf.toFixed(3);
+  document.getElementById('sm-d').textContent = r.d.toFixed(3);
+  drawCanvas(m, f1, r.mu, r.Fr, r.a);
+}
+
+function calcUpdate() {
+  const m = +document.getElementById('c-masa').value || 0;
+  const f1 = +document.getElementById('c-f1').value || 0;
+  const f2 = +document.getElementById('c-f2').value || 0;
+  const t = +document.getElementById('c-t').value || 0;
+  const r = calc(m, f1, f2, t);
+  document.getElementById('cr-N').textContent = r.N.toFixed(4) + ' N';
+  document.getElementById('cr-mu').textContent = r.mu.toFixed(4);
+  document.getElementById('cr-Fr').textContent = r.Fr.toFixed(4) + ' N';
+  document.getElementById('cr-a').textContent = r.a.toFixed(4) + ' m/s²';
+  document.getElementById('cr-vf').textContent = r.vf.toFixed(4) + ' m/s';
+  document.getElementById('cr-d').textContent = r.d.toFixed(4) + ' m';
+}
+
+function runCheck() {
+  const r = calc(2.72, 17.738, 22.24, 2);
+  function badge(id, sim, lab) {
+    const el = document.getElementById(id);
+    const ok = Math.abs(sim - lab) < 0.05;
+    el.textContent = ok ? '✓ ' + sim.toFixed(3) : '✗ ' + sim.toFixed(3);
+    el.className = 'badge ' + (ok ? 'badge-ok' : 'badge-err');
+  }
+  badge('chk-N', r.N, 26.656);
+  badge('chk-mu', r.mu, 0.67);
+  badge('chk-Fr', r.Fr, 17.86);
+  badge('chk-a', r.a, 1.61);
+  badge('chk-vf', r.vf, 3.22);
+  badge('chk-d', r.d, 3.22);
+}
+
+function drawCanvas(m, f1, mu, Fr, a) {
+  const canvas = document.getElementById('physics-canvas');
+  if (!canvas) return;
+  canvas.width = canvas.offsetWidth || 700;
+  canvas.height = 170;
+  const W = canvas.width;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, W, 170);
+
+  // Surface
+  ctx.fillStyle = 'rgba(91,141,246,0.08)';
+  ctx.fillRect(30, 120, W - 60, 6);
+  ctx.fillStyle = 'rgba(91,141,246,0.25)';
+  ctx.fillRect(30, 126, W - 60, 2);
+
+  // Block
+  const bx = W / 2 - 45, by = 74, bw = 90, bh = 46;
+  ctx.fillStyle = '#1e2029';
+  ctx.strokeStyle = '#3ecf8e';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, bw, bh, 6);
+  ctx.fill();
+  ctx.stroke();
+
+  ctx.fillStyle = '#3ecf8e';
+  ctx.font = '500 13px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(m.toFixed(2) + ' kg', bx + bw / 2, by + 27);
+  ctx.fillStyle = '#7a7e93';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.fillText('μ=' + mu.toFixed(3), bx + bw / 2, by + 42);
+
+  function arrow(x1, y1, x2, y2, color, label, labelOffset) {
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.stroke();
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    ctx.beginPath();
+    ctx.moveTo(x2, y2);
+    ctx.lineTo(x2 - 11 * Math.cos(ang - 0.35), y2 - 11 * Math.sin(ang - 0.35));
+    ctx.lineTo(x2 - 11 * Math.cos(ang + 0.35), y2 - 11 * Math.sin(ang + 0.35));
+    ctx.closePath();
+    ctx.fill();
+    if (label) {
+      ctx.font = '500 11px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      const lx = (x1 + x2) / 2 + (labelOffset ? labelOffset[0] : 0);
+      const ly = (y1 + y2) / 2 + (labelOffset ? labelOffset[1] : -8);
+      ctx.fillText(label, lx, ly);
+    }
+  }
+
+  const sc = 2.8;
+  const cx = bx + bw / 2;
+
+  // F1 →
+  arrow(bx + bw, by + 23, bx + bw + Math.min(f1 * sc, W / 2 - bx - bw - 20), by + 23,
+    '#5b8df6', 'F₁=' + f1.toFixed(1) + 'N', [0, -8]);
+
+  // Fr ←
+  arrow(bx, by + 23, bx - Math.min(Fr * sc, bx - 30), by + 23,
+    '#f87171', 'Fr=' + Fr.toFixed(1) + 'N', [0, -8]);
+
+  // N ↑
+  arrow(cx, by, cx, by - 44, '#3ecf8e', 'N', [20, 0]);
+
+  // P ↓
+  arrow(cx, by + bh, cx, by + bh + 36, '#fbbf24', 'P', [20, 0]);
+
+  // acceleration label
+  ctx.fillStyle = '#7a7e93';
+  ctx.font = '11px "JetBrains Mono", monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText('a = ' + a.toFixed(2) + ' m/s²', 35, 20);
+}
+
+window.addEventListener('load', () => { simUpdate(); calcUpdate(); runCheck(); });
+window.addEventListener('resize', simUpdate);
+</script>
+</body>
+</html>
